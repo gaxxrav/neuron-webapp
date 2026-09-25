@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 
-import { createWorkItem } from "@/lib/actions";
+import { createTask } from "@/lib/actions";
 import { todayKey } from "@/lib/dates";
 import type { Section } from "@/lib/types";
 
@@ -48,7 +48,7 @@ export function AddItemForm({ sections }: { sections: Section[] }) {
 
     startTransition(async () => {
       try {
-        await createWorkItem(payload);
+        await createTask(payload);
         setTitle("");
         setVisualise(false);
         setPriority(false);
@@ -69,8 +69,8 @@ export function AddItemForm({ sections }: { sections: Section[] }) {
         <input
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          placeholder="Add a work item…"
-          aria-label="Work item title"
+          placeholder="Add a task…"
+          aria-label="Task title"
           className="min-w-0 flex-1 rounded-lg bg-surface-muted px-3 py-2 text-sm outline-none placeholder:text-muted focus:ring-2 focus:ring-accent/40"
         />
         <button
@@ -130,7 +130,7 @@ export function AddItemForm({ sections }: { sections: Section[] }) {
               type="date"
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
-              aria-label="Countdown start date"
+              aria-label="EventItem start date"
               className="rounded-lg bg-surface-muted px-2 py-1 text-foreground outline-none focus:ring-2 focus:ring-accent/40"
             />
           </label>
@@ -142,7 +142,7 @@ export function AddItemForm({ sections }: { sections: Section[] }) {
               min={startDate}
               required
               onChange={(e) => setEndDate(e.target.value)}
-              aria-label="Countdown end date"
+              aria-label="EventItem end date"
               className="rounded-lg bg-surface-muted px-2 py-1 text-foreground outline-none focus:ring-2 focus:ring-accent/40"
             />
           </label>

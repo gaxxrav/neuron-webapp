@@ -1,5 +1,5 @@
-// All countdown maths is done on calendar days in the viewer's local timezone,
-// never on timestamps. A countdown only changes when the local date rolls over,
+// All event maths is done on calendar days in the viewer's local timezone,
+// never on timestamps. An event only changes when the local date rolls over,
 // which is what lets us recompute once per day instead of on every render.
 
 const MS_PER_DAY = 86_400_000;
@@ -38,7 +38,7 @@ export function msUntilNextLocalMidnight(now = new Date()): number {
   return Math.max(1000, next.getTime() - now.getTime());
 }
 
-export type CountdownProgress = {
+export type EventProgress = {
   /** Total boxes to draw: one per day of the span. Always at least 1. */
   totalDays: number;
   /** Boxes already filled, clamped to the span. */
@@ -51,11 +51,11 @@ export type CountdownProgress = {
   isOver: boolean;
 };
 
-export function countdownProgress(
+export function eventProgress(
   startDate: string,
   endDate: string,
   today: string,
-): CountdownProgress {
+): EventProgress {
   const totalDays = Math.max(1, daysBetween(startDate, endDate));
   const rawElapsed = daysBetween(startDate, today);
   const elapsedDays = Math.min(Math.max(rawElapsed, 0), totalDays);

@@ -11,7 +11,7 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
       <div className="w-full max-w-sm">
         <h1 className="text-2xl font-semibold tracking-tight">Neuron</h1>
         <p className="mt-1 mb-8 text-sm text-muted">
-          Your work items and countdowns, in one place.
+          Your tasks and events, in one place.
         </p>
 
         <EmailForm next={next} />

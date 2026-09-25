@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Neuron",
-  description: "Work items and countdowns.",
+  description: "Tasks and events.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

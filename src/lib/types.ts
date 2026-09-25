@@ -10,7 +10,7 @@ export type Section = {
   created_at: string;
 };
 
-export type WorkItem = {
+export type Task = {
   id: string;
   user_id: string;
   section_id: string;
@@ -23,10 +23,10 @@ export type WorkItem = {
   created_at: string;
 };
 
-export type Countdown = {
+export type EventItem = {
   id: string;
   user_id: string;
-  /** Set when the countdown was created from a work item's checkbox. */
+  /** Set when the event was created from a task's checkbox. */
   work_item_id: string | null;
   title: string;
   /** ISO `YYYY-MM-DD`, no time component. */

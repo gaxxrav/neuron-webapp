@@ -2,10 +2,10 @@
 
 import { useState, useTransition } from "react";
 
-import { createCountdown } from "@/lib/actions";
+import { createEvent } from "@/lib/actions";
 import { todayKey } from "@/lib/dates";
 
-export function AddCountdownForm() {
+export function AddEventForm() {
   const [title, setTitle] = useState("");
   const [startDate, setStartDate] = useState(todayKey);
   const [endDate, setEndDate] = useState("");
@@ -23,12 +23,12 @@ export function AddCountdownForm() {
 
     startTransition(async () => {
       try {
-        await createCountdown({ title, startDate, endDate });
+        await createEvent({ title, startDate, endDate });
         setTitle("");
         setEndDate("");
         setStartDate(todayKey());
       } catch (e) {
-        setError(e instanceof Error ? e.message : "Could not add that countdown.");
+        setError(e instanceof Error ? e.message : "Could not add that event.");
       }
     });
   }
@@ -42,7 +42,7 @@ export function AddCountdownForm() {
         <input
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          placeholder="Count down to…"
+          placeholder="Add an event…"
           aria-label="Event name"
           className="min-w-0 flex-1 rounded-lg bg-surface-muted px-3 py-2 text-sm outline-none placeholder:text-muted focus:ring-2 focus:ring-accent/40"
         />

@@ -2,7 +2,7 @@
 
 /**
  * One box per day of the span; boxes for days already completed are filled.
- * Box size steps down as the span grows so a multi-year countdown still fits
+ * Box size steps down as the span grows so a multi-year event still fits
  * without scrolling.
  */
 export function DayBoxes({

@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { cache } from "react";
 
 import { createClient } from "@/lib/supabase/server";
-import type { Countdown, Section, WorkItem } from "@/lib/types";
+import type { EventItem, Section, Task } from "@/lib/types";
 
 const PRIORITY_SECTION_NAME = "Priority";
 const DEFAULT_SECTION_NAME = "To do";
@@ -29,13 +29,13 @@ const requireUser = cache(async () => {
 
 /**
  * Revalidating both tabs on every write meant ticking a task refetched the
- * countdown data too. Each action now names the routes its change is visible
+ * event data too. Each action now names the routes its change is visible
  * on. "all" is for writes that cascade across both, such as deleting an item
- * that owns a countdown.
+ * that owns an event.
  */
-function refresh(scope: "tasks" | "countdowns" | "all") {
-  if (scope !== "countdowns") revalidatePath("/tasks");
-  if (scope !== "tasks") revalidatePath("/countdown");
+function refresh(scope: "tasks" | "events" | "all") {
+  if (scope !== "events") revalidatePath("/tasks");
+  if (scope !== "tasks") revalidatePath("/events");
 }
 
 /** Position one past the current maximum, so new rows land at the bottom. */
@@ -49,8 +49,8 @@ function nextPosition(rows: { position: number }[]): number {
 
 export type Workspace = {
   sections: Section[];
-  items: WorkItem[];
-  /** Work item ids that currently have a linked countdown. */
+  items: Task[];
+  /** Task ids that currently have a linked event. */
   visualisedItemIds: string[];
 };
 
@@ -64,7 +64,7 @@ export async function loadWorkspace(): Promise<Workspace> {
   await ensurePrioritySection();
   await ensureDefaultSection();
 
-  const [sectionsRes, itemsRes, countdownsRes] = await Promise.all([
+  const [sectionsRes, itemsRes, eventsRes] = await Promise.all([
     supabase
       .from("sections")
       .select("*")
@@ -84,18 +84,18 @@ export async function loadWorkspace(): Promise<Workspace> {
 
   if (sectionsRes.error) throw sectionsRes.error;
   if (itemsRes.error) throw itemsRes.error;
-  if (countdownsRes.error) throw countdownsRes.error;
+  if (eventsRes.error) throw eventsRes.error;
 
   return {
     sections: sectionsRes.data as Section[],
-    items: itemsRes.data as WorkItem[],
-    visualisedItemIds: (countdownsRes.data ?? [])
+    items: itemsRes.data as Task[],
+    visualisedItemIds: (eventsRes.data ?? [])
       .map((r) => r.work_item_id as string)
       .filter(Boolean),
   };
 }
 
-export async function loadCountdowns(): Promise<Countdown[]> {
+export async function loadEvents(): Promise<EventItem[]> {
   const { supabase, userId } = await requireUser();
   const { data, error } = await supabase
     .from("countdowns")
@@ -103,7 +103,7 @@ export async function loadCountdowns(): Promise<Countdown[]> {
     .eq("user_id", userId)
     .order("position", { ascending: true });
   if (error) throw error;
-  return data as Countdown[];
+  return data as EventItem[];
 }
 
 // ---------------------------------------------------------------------------
@@ -215,7 +215,7 @@ export async function renameSection(id: string, name: string): Promise<void> {
   refresh("tasks");
 }
 
-/** Deletes a normal section and, by cascade, the work items inside it. */
+/** Deletes a normal section and, by cascade, the tasks inside it. */
 export async function deleteSection(id: string): Promise<void> {
   const { supabase } = await requireUser();
   const { error } = await supabase
@@ -255,10 +255,10 @@ export async function reorderSections(orderedIds: string[]): Promise<void> {
 }
 
 // ---------------------------------------------------------------------------
-// Work items
+// Tasks
 // ---------------------------------------------------------------------------
 
-export type CreateWorkItemInput = {
+export type CreateTaskInput = {
   title: string;
   /** Ignored when `priority` is set; falls back to the default list if empty. */
   sectionId: string;
@@ -269,7 +269,7 @@ export type CreateWorkItemInput = {
   startDate?: string;
 };
 
-export async function createWorkItem(input: CreateWorkItemInput): Promise<void> {
+export async function createTask(input: CreateTaskInput): Promise<void> {
   const { supabase, userId } = await requireUser();
   const title = input.title.trim();
   if (!title) return;
@@ -302,7 +302,7 @@ export async function createWorkItem(input: CreateWorkItemInput): Promise<void> 
     if (!input.endDate) {
       throw new Error("Pick an end date to add this item to the visualisation.");
     }
-    await linkCountdown(item.id as string, title, input.endDate, input.startDate);
+    await linkEvent(item.id as string, title, input.endDate, input.startDate);
   }
 
   refresh(input.addToVisualisation ? "all" : "tasks");
@@ -316,7 +316,7 @@ export async function createWorkItem(input: CreateWorkItemInput): Promise<void> 
  * `on delete set null`) or was never recorded. The item lands at the bottom
  * of wherever it arrives.
  */
-export async function setWorkItemPriority(
+export async function setTaskPriority(
   id: string,
   priority: boolean,
 ): Promise<void> {
@@ -367,14 +367,14 @@ export async function setWorkItemPriority(
   refresh("tasks");
 }
 
-export async function setWorkItemDone(id: string, done: boolean): Promise<void> {
+export async function setTaskDone(id: string, done: boolean): Promise<void> {
   const { supabase } = await requireUser();
   const { error } = await supabase.from("work_items").update({ done }).eq("id", id);
   if (error) throw error;
   refresh("tasks");
 }
 
-export async function renameWorkItem(id: string, title: string): Promise<void> {
+export async function renameTask(id: string, title: string): Promise<void> {
   const { supabase } = await requireUser();
   const trimmed = title.trim();
   if (!trimmed) return;
@@ -386,18 +386,18 @@ export async function renameWorkItem(id: string, title: string): Promise<void> {
   refresh("tasks");
 }
 
-export async function deleteWorkItem(id: string): Promise<void> {
+export async function deleteTask(id: string): Promise<void> {
   const { supabase } = await requireUser();
 
-  // Any linked countdown is removed explicitly first. The foreign key is
+  // Any linked event is removed explicitly first. The foreign key is
   // declared `on delete cascade`, so this is belt and braces — but it keeps
   // the delete working even where that constraint is missing, and it makes
   // the intent visible at the call site rather than hidden in the schema.
-  const { error: countdownError } = await supabase
+  const { error: eventError } = await supabase
     .from("countdowns")
     .delete()
     .eq("work_item_id", id);
-  if (countdownError) throw countdownError;
+  if (eventError) throw eventError;
 
   const { error } = await supabase.from("work_items").delete().eq("id", id);
   if (error) throw error;
@@ -409,7 +409,7 @@ export async function deleteWorkItem(id: string): Promise<void> {
  * Persists a drag: `orderedIds` are the items of `sectionId` in their new
  * order, including any item that was just dragged in from another section.
  */
-export async function reorderWorkItems(
+export async function reorderTasks(
   sectionId: string,
   orderedIds: string[],
 ): Promise<void> {
@@ -426,11 +426,11 @@ export async function reorderWorkItems(
 }
 
 // ---------------------------------------------------------------------------
-// Countdowns
+// Events
 // ---------------------------------------------------------------------------
 
-async function linkCountdown(
-  workItemId: string,
+async function linkEvent(
+  taskId: string,
   title: string,
   endDate: string,
   startDate?: string,
@@ -444,7 +444,7 @@ async function linkCountdown(
 
   const { error } = await supabase.from("countdowns").insert({
     user_id: userId,
-    work_item_id: workItemId,
+    work_item_id: taskId,
     title: title.slice(0, 500),
     // Omitted rather than nulled so the column default (today) applies.
     ...(startDate ? { start_date: startDate } : {}),
@@ -455,12 +455,12 @@ async function linkCountdown(
 }
 
 /**
- * The "add to visualisation" checkbox on an existing work item. Turning it off
- * removes the countdown entirely — an unchecked item does not appear on the
+ * The "add to visualisation" checkbox on an existing task. Turning it off
+ * removes the event entirely — an unchecked item does not appear on the
  * visualisation tab at all.
  */
-export async function setWorkItemVisualised(
-  workItemId: string,
+export async function setTaskVisualised(
+  taskId: string,
   visualised: boolean,
   endDate?: string,
   startDate?: string,
@@ -471,7 +471,7 @@ export async function setWorkItemVisualised(
     const { error } = await supabase
       .from("countdowns")
       .delete()
-      .eq("work_item_id", workItemId);
+      .eq("work_item_id", taskId);
     if (error) throw error;
     refresh("all");
     return;
@@ -482,23 +482,23 @@ export async function setWorkItemVisualised(
   const { data: item, error: itemError } = await supabase
     .from("work_items")
     .select("title")
-    .eq("id", workItemId)
+    .eq("id", taskId)
     .single();
   if (itemError) throw itemError;
 
-  await linkCountdown(workItemId, item.title as string, endDate, startDate);
+  await linkEvent(taskId, item.title as string, endDate, startDate);
   refresh("all");
 }
 
-export type CreateCountdownInput = {
+export type CreateEventInput = {
   title: string;
   endDate: string;
   startDate?: string;
 };
 
-/** A countdown that exists only on the visualisation tab, with no work item. */
-export async function createCountdown(
-  input: CreateCountdownInput,
+/** An event that exists only on the visualisation tab, with no task. */
+export async function createEvent(
+  input: CreateEventInput,
 ): Promise<void> {
   const { supabase, userId } = await requireUser();
   const title = input.title.trim();
@@ -518,10 +518,10 @@ export async function createCountdown(
     position: nextPosition(siblings ?? []),
   });
   if (error) throw error;
-  refresh("countdowns");
+  refresh("events");
 }
 
-export async function updateCountdown(
+export async function updateEvent(
   id: string,
   patch: { title?: string; startDate?: string; endDate?: string },
 ): Promise<void> {
@@ -534,21 +534,21 @@ export async function updateCountdown(
 
   const { error } = await supabase.from("countdowns").update(update).eq("id", id);
   if (error) throw error;
-  refresh("countdowns");
+  refresh("events");
 }
 
 /**
- * Removes the countdown only. A linked work item stays on the tasks tab — this
+ * Removes the event only. A linked task stays on the tasks tab — this
  * is the same as unticking "add to visualisation".
  */
-export async function deleteCountdown(id: string): Promise<void> {
+export async function deleteEvent(id: string): Promise<void> {
   const { supabase } = await requireUser();
   const { error } = await supabase.from("countdowns").delete().eq("id", id);
   if (error) throw error;
   refresh("all");
 }
 
-export async function setCountdownCollapsed(
+export async function setEventCollapsed(
   id: string,
   collapsed: boolean,
 ): Promise<void> {
@@ -560,12 +560,12 @@ export async function setCountdownCollapsed(
   if (error) throw error;
 }
 
-export async function reorderCountdowns(orderedIds: string[]): Promise<void> {
+export async function reorderEvents(orderedIds: string[]): Promise<void> {
   const { supabase } = await requireUser();
   await Promise.all(
     orderedIds.map((id, index) =>
       supabase.from("countdowns").update({ position: index }).eq("id", id),
     ),
   );
-  refresh("countdowns");
+  refresh("events");
 }

@@ -1,14 +1,14 @@
 # Neuron
 
-A personal work-item tracker with a day-by-day countdown visualiser.
+A personal work-item tracker with a day-by-day event visualiser.
 
-**Work items** live in collapsible, drag-reorderable sections. A red **Priority**
+**Tasks** live in collapsible, drag-reorderable sections. A red **Priority**
 section is pinned at the top and cannot be moved or deleted. Ticking
-*add to visualisation* on an item creates a linked countdown on the second tab.
+*add to visualisation* on an item creates a linked event on the second tab.
 
-**Countdowns** render one box per day of a span, filling in each day that has
-completed. The list is independent of the task list — a countdown can stand
-alone, or be linked to a work item.
+**Events** render one box per day of a span, filling in each day that has
+completed. The list is independent of the task list — a event can stand
+alone, or be linked to a task.
 
 Next.js 16 (App Router) · Supabase (Postgres + Auth) · Tailwind v4 · dnd-kit.
 
@@ -76,17 +76,17 @@ On first run, open http://localhost:3000, choose **Create an account**, and sign
 
 | Path | Role |
 | --- | --- |
-| `supabase/migrations/` | Schema and RLS policies |
+| `supabase/migrations/` | Schema and RLS policies. Tables are still named `work_items` and `countdowns`; the UI calls them tasks and events |
 | `src/proxy.ts` | Refreshes the session cookie, redirects signed-out visitors |
 | `src/app/login/actions.ts` | Sign-in and sign-up, as server actions |
 | `src/app/auth/callback/` | Code exchange, used only if you re-enable email confirmation or add password reset |
 | `src/lib/actions.ts` | Every read and write, as server actions |
-| `src/lib/dates.ts` | Calendar-day maths for countdowns |
-| `src/lib/use-today.ts` | Re-renders countdowns only when the local day rolls over |
+| `src/lib/dates.ts` | Calendar-day maths for events |
+| `src/lib/use-today.ts` | Re-renders events only when the local day rolls over |
 | `src/components/tasks/` | Sections, items, drag and drop |
-| `src/components/countdown/` | Countdown cards and the day-box grid |
+| `src/components/event/` | Event cards and the day-box grid |
 
-### Countdown refresh behaviour
+### Event refresh behaviour
 
 Progress is derived from calendar dates, never from timestamps, so it changes
 only when the local date does. `useToday` arms a single timer for the next local
@@ -96,6 +96,6 @@ ordinary render or page load within the same day.
 
 ### Ordering
 
-`sections`, `work_items` and `countdowns` each carry an integer `position`.
+`sections`, `work_items` and `events` each carry an integer `position`.
 A drag renumbers the affected list and persists it. The priority section is
 excluded from section reordering and sits at `position = -1` as a safety net.

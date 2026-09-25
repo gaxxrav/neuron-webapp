@@ -4,8 +4,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const TABS = [
-  { href: "/tasks", label: "Work items" },
-  { href: "/countdown", label: "Countdowns" },
+  { href: "/tasks", label: "Tasks" },
+  { href: "/events", label: "Events" },
 ] as const;
 
 export function TabNav() {

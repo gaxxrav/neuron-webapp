@@ -6,15 +6,15 @@ import { CSS } from "@dnd-kit/utilities";
 import { useState, useTransition } from "react";
 
 import { ChevronIcon, GripIcon, TrashIcon } from "@/components/icons";
-import { WorkItemRow } from "@/components/tasks/work-item-row";
+import { TaskRow } from "@/components/tasks/task-row";
 import { deleteSection, renameSection, setSectionCollapsed } from "@/lib/actions";
-import type { Section, WorkItem } from "@/lib/types";
+import type { Section, Task } from "@/lib/types";
 
 export const containerId = (sectionId: string) => `container:${sectionId}`;
 
 type Props = {
   section: Section;
-  items: WorkItem[];
+  items: Task[];
   visualisedItemIds: Set<string>;
 };
 
@@ -159,7 +159,7 @@ export function SectionCard({ section, items, visualisedItemIds }: Props) {
           >
             <ul className="flex flex-col gap-0.5">
               {items.map((item) => (
-                <WorkItemRow
+                <TaskRow
                   key={item.id}
                   item={item}
                   visualised={visualisedItemIds.has(item.id)}
@@ -171,7 +171,7 @@ export function SectionCard({ section, items, visualisedItemIds }: Props) {
 
           {items.length === 0 ? (
             <p className="px-2 py-3 text-xs text-muted">
-              Nothing here. Add an item, or drag one in.
+              Nothing here. Add a task, or drag one in.
             </p>
           ) : null}
         </div>

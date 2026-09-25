@@ -7,16 +7,16 @@ import { useState } from "react";
 import { ChartIcon, FlagIcon, GripIcon, TrashIcon } from "@/components/icons";
 import { useBoardActions } from "@/components/tasks/board-context";
 import { todayKey } from "@/lib/dates";
-import type { WorkItem } from "@/lib/types";
+import type { Task } from "@/lib/types";
 
 type Props = {
-  item: WorkItem;
-  /** True when a countdown is already linked to this item. */
+  item: Task;
+  /** True when an event is already linked to this item. */
   visualised: boolean;
   priority: boolean;
 };
 
-export function WorkItemRow({ item, visualised, priority }: Props) {
+export function TaskRow({ item, visualised, priority }: Props) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: item.id, data: { type: "item", sectionId: item.section_id } });
 
@@ -122,9 +122,9 @@ export function WorkItemRow({ item, visualised, priority }: Props) {
         </button>
 
         {visualised ? (
-          // Deliberately inert: removal lives on the Countdowns tab only.
+          // Deliberately inert: removal lives on the Events tab only.
           <span
-            title="In the visualisation — remove it from the Countdowns tab"
+            title="In the visualisation — remove it from the Events tab"
             aria-label="In the visualisation"
             className="shrink-0 p-2.5 text-accent sm:p-1"
           >
@@ -145,9 +145,9 @@ export function WorkItemRow({ item, visualised, priority }: Props) {
           type="button"
           onClick={() => {
             // Spell out the knock-on effect: deleting a visualised item takes
-            // its countdown with it, which is not obvious from this tab.
+            // its event with it, which is not obvious from this tab.
             const message = visualised
-              ? `Delete \u201c${item.title}\u201d? Its countdown will be removed too.`
+              ? `Delete \u201c${item.title}\u201d? Its event will be removed too.`
               : `Delete \u201c${item.title}\u201d?`;
             if (window.confirm(message)) board.remove(item.id);
           }}
@@ -172,7 +172,7 @@ export function WorkItemRow({ item, visualised, priority }: Props) {
             min={todayKey()}
             value={endDate}
             onChange={(e) => setEndDate(e.target.value)}
-            aria-label="Countdown end date"
+            aria-label="EventItem end date"
             className="rounded bg-surface-muted px-2 py-1 outline-none focus:ring-2 focus:ring-accent/40"
           />
           <button

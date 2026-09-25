@@ -47,7 +47,7 @@ export function TrashIcon({ className }: IconProps) {
   );
 }
 
-/** Used for the "add to visualisation" toggle on a work item. */
+/** Used for the "add to visualisation" toggle on a task. */
 export function ChartIcon({ className }: IconProps) {
   return (
     <svg
@@ -83,7 +83,7 @@ export function PlusIcon({ className }: IconProps) {
   );
 }
 
-/** Promote/demote a work item to or from the priority section. */
+/** Promote/demote a task to or from the priority section. */
 export function FlagIcon({
   className,
   filled = false,

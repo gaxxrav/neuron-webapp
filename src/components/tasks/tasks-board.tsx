@@ -21,28 +21,28 @@ import {
 } from "@dnd-kit/sortable";
 import { useRef, useState, useTransition } from "react";
 
-import { AddItemForm } from "@/components/tasks/add-item-form";
+import { AddItemForm } from "@/components/tasks/add-task-form";
 import { AddSectionForm } from "@/components/tasks/add-section-form";
 import { BoardProvider, type BoardActions } from "@/components/tasks/board-context";
 import { SectionCard } from "@/components/tasks/section-card";
 import {
-  deleteWorkItem,
-  renameWorkItem,
+  deleteTask,
+  renameTask,
   reorderSections,
-  reorderWorkItems,
-  setWorkItemDone,
-  setWorkItemPriority,
-  setWorkItemVisualised,
+  reorderTasks,
+  setTaskDone,
+  setTaskPriority,
+  setTaskVisualised,
 } from "@/lib/actions";
 import { todayKey } from "@/lib/dates";
-import type { Section, WorkItem } from "@/lib/types";
+import type { Section, Task } from "@/lib/types";
 import { useServerState } from "@/lib/use-server-state";
 
 const CONTAINER_PREFIX = "container:";
 
 type Props = {
   sections: Section[];
-  items: WorkItem[];
+  items: Task[];
   visualisedItemIds: string[];
 };
 
@@ -84,7 +84,7 @@ export function TasksBoard({ sections, items, visualisedItemIds }: Props) {
    * that includes re-validating the session and refetching the whole board.
    */
   function optimistic(
-    apply: (current: WorkItem[]) => WorkItem[],
+    apply: (current: Task[]) => Task[],
     persist: () => Promise<void>,
   ) {
     // Captured from the current render, not inside the updater: the updater
@@ -108,14 +108,14 @@ export function TasksBoard({ sections, items, visualisedItemIds }: Props) {
     toggleDone(id, done) {
       optimistic(
         (current) => current.map((i) => (i.id === id ? { ...i, done } : i)),
-        () => setWorkItemDone(id, done),
+        () => setTaskDone(id, done),
       );
     },
 
     rename(id, title) {
       optimistic(
         (current) => current.map((i) => (i.id === id ? { ...i, title } : i)),
-        () => renameWorkItem(id, title),
+        () => renameTask(id, title),
       );
     },
 
@@ -123,7 +123,7 @@ export function TasksBoard({ sections, items, visualisedItemIds }: Props) {
       setLocalVisualised((current) => current.filter((v) => v !== id));
       optimistic(
         (current) => current.filter((i) => i.id !== id),
-        () => deleteWorkItem(id),
+        () => deleteTask(id),
       );
     },
 
@@ -144,7 +144,7 @@ export function TasksBoard({ sections, items, visualisedItemIds }: Props) {
 
       // Only the server can conjure a default section, so let it round trip.
       if (!target) {
-        startTransition(() => setWorkItemPriority(id, !isPriority));
+        startTransition(() => setTaskPriority(id, !isPriority));
         return;
       }
 
@@ -165,7 +165,7 @@ export function TasksBoard({ sections, items, visualisedItemIds }: Props) {
                 }
               : i,
           ),
-        () => setWorkItemPriority(id, !isPriority),
+        () => setTaskPriority(id, !isPriority),
       );
     },
 
@@ -175,7 +175,7 @@ export function TasksBoard({ sections, items, visualisedItemIds }: Props) {
       setError(null);
       startTransition(async () => {
         try {
-          await setWorkItemVisualised(id, true, endDate, todayKey());
+          await setTaskVisualised(id, true, endDate, todayKey());
         } catch (e) {
           setLocalVisualised(snapshot);
           setError(e instanceof Error ? e.message : "That change did not save.");
@@ -304,8 +304,8 @@ export function TasksBoard({ sections, items, visualisedItemIds }: Props) {
         : null;
 
     startTransition(async () => {
-      await reorderWorkItems(target, ordered);
-      if (origin && sourceIds) await reorderWorkItems(origin, sourceIds);
+      await reorderTasks(target, ordered);
+      if (origin && sourceIds) await reorderTasks(origin, sourceIds);
     });
   }
 
@@ -392,7 +392,7 @@ export function TasksBoard({ sections, items, visualisedItemIds }: Props) {
 
         {normalSections.length === 0 && itemsIn(prioritySection?.id ?? "").length === 0 ? (
           <p className="px-1 text-xs text-muted">
-            Tip: add a section to group your work items, then drag sections to
+            Tip: add a section to group your tasks, then drag sections to
             reorder them. The priority section always stays on top.
           </p>
         ) : null}

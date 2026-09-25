@@ -6,7 +6,7 @@ import { msUntilNextLocalMidnight, todayKey } from "./dates";
 
 /**
  * Notifies React when the local calendar day rolls over. One timer is armed
- * for the next local midnight rather than polling, so countdowns sit idle all
+ * for the next local midnight rather than polling, so events sit idle all
  * day and wake exactly once when the date changes.
  */
 function subscribe(onChange: () => void): () => void {

@@ -18,7 +18,7 @@ export type BoardActions = {
   togglePriority: (id: string) => void;
   /**
    * One-way by design: an item can be added to the visualisation from here,
-   * but a countdown is only ever removed from the Countdowns tab. Deleting
+   * but an event is only ever removed from the Events tab. Deleting
    * something from two places invites deleting it by accident from the one
    * you were not thinking about.
    */

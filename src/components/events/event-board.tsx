@@ -18,15 +18,15 @@ import {
 } from "@dnd-kit/sortable";
 import { useTransition } from "react";
 
-import { AddCountdownForm } from "@/components/countdown/add-countdown-form";
-import { CountdownCard } from "@/components/countdown/countdown-card";
-import { reorderCountdowns } from "@/lib/actions";
-import type { Countdown } from "@/lib/types";
+import { AddEventForm } from "@/components/events/add-event-form";
+import { EventCard } from "@/components/events/event-card";
+import { reorderEvents } from "@/lib/actions";
+import type { EventItem } from "@/lib/types";
 import { useServerState } from "@/lib/use-server-state";
 import { useToday } from "@/lib/use-today";
 
-export function CountdownBoard({ countdowns }: { countdowns: Countdown[] }) {
-  const [local, setLocal] = useServerState(countdowns);
+export function EventBoard({ events }: { events: EventItem[] }) {
+  const [local, setLocal] = useServerState(events);
   const [, startTransition] = useTransition();
 
   // Shared by every card, so the whole page recomputes once per day rather
@@ -40,8 +40,8 @@ export function CountdownBoard({ countdowns }: { countdowns: Countdown[] }) {
 
   const ordered = [...local].sort((a, b) => a.position - b.position);
 
-  function handleDragEnd(event: DragEndEvent) {
-    const { active, over } = event;
+  function handleDragEnd(e: DragEndEvent) {
+    const { active, over } = e;
     if (!over || active.id === over.id) return;
 
     const ids = ordered.map((c) => c.id);
@@ -51,23 +51,23 @@ export function CountdownBoard({ countdowns }: { countdowns: Countdown[] }) {
 
     const next = arrayMove(ids, from, to);
     setLocal((prev) => prev.map((c) => ({ ...c, position: next.indexOf(c.id) })));
-    startTransition(() => reorderCountdowns(next));
+    startTransition(() => reorderEvents(next));
   }
 
   return (
     <div className="flex flex-col gap-4">
-      <AddCountdownForm />
+      <AddEventForm />
 
       {ordered.length === 0 ? (
         <p className="px-1 py-6 text-center text-sm text-muted">
-          No countdowns yet. Add one above, or tick “add to visualisation” on a
-          work item.
+          No events yet. Add one above, or tick “add to visualisation” on a
+          task.
         </p>
       ) : (
         <DndContext
           // See the note in tasks-board.tsx: a stable id keeps dnd-kit's
           // generated aria ids identical across server and client renders.
-          id="countdown-board"
+          id="event-board"
           sensors={sensors}
           collisionDetection={closestCenter}
           modifiers={[restrictToVerticalAxis]}
@@ -78,10 +78,10 @@ export function CountdownBoard({ countdowns }: { countdowns: Countdown[] }) {
             strategy={verticalListSortingStrategy}
           >
             <div className="flex flex-col gap-3">
-              {ordered.map((countdown) => (
-                <CountdownCard
-                  key={countdown.id}
-                  countdown={countdown}
+              {ordered.map((event) => (
+                <EventCard
+                  key={event.id}
+                  event={event}
                   today={today}
                 />
               ))}
