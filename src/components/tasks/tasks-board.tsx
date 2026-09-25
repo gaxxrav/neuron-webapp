@@ -199,6 +199,10 @@ export function TasksBoard({ sections, items, visualisedItemIds }: Props) {
       <AddItemForm sections={normalSections} />
 
       <DndContext
+        // Explicit id: without it dnd-kit derives its aria-describedby id from
+        // an internal counter that starts at a different value on the server
+        // than in the browser, which trips a hydration mismatch.
+        id="tasks-board"
         sensors={sensors}
         collisionDetection={closestCorners}
         modifiers={[restrictToVerticalAxis]}

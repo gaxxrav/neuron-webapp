@@ -1,46 +1,54 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 
 import { msUntilNextLocalMidnight, todayKey } from "./dates";
 
 /**
- * The current local date as `YYYY-MM-DD`, re-rendering only when the day rolls
- * over. One timer is armed for the next local midnight rather than polling, so
- * countdowns sit idle all day and refresh exactly once when the date changes
- * (or immediately when the tab is refocused after being away past midnight).
+ * Notifies React when the local calendar day rolls over. One timer is armed
+ * for the next local midnight rather than polling, so countdowns sit idle all
+ * day and wake exactly once when the date changes.
  */
-export function useToday(): string {
-  const [day, setDay] = useState(todayKey);
+function subscribe(onChange: () => void): () => void {
+  let timer: ReturnType<typeof setTimeout>;
 
-  useEffect(() => {
-    let timer: ReturnType<typeof setTimeout>;
+  const arm = () => {
+    timer = setTimeout(() => {
+      onChange();
+      arm();
+    }, msUntilNextLocalMidnight());
+  };
+  arm();
 
-    const sync = () => {
-      setDay((current) => {
-        const next = todayKey();
-        return next === current ? current : next;
-      });
-      timer = setTimeout(sync, msUntilNextLocalMidnight());
-    };
-
-    timer = setTimeout(sync, msUntilNextLocalMidnight());
-
-    // A laptop asleep past midnight never fires the timer on time, so re-check
-    // whenever the tab becomes visible again.
-    const onVisible = () => {
-      if (document.visibilityState === "visible") {
-        clearTimeout(timer);
-        sync();
-      }
-    };
-    document.addEventListener("visibilitychange", onVisible);
-
-    return () => {
+  // A laptop asleep past midnight never fires its timer on time, so re-check
+  // whenever the tab becomes visible again.
+  const onVisible = () => {
+    if (document.visibilityState === "visible") {
       clearTimeout(timer);
-      document.removeEventListener("visibilitychange", onVisible);
-    };
-  }, []);
+      onChange();
+      arm();
+    }
+  };
+  document.addEventListener("visibilitychange", onVisible);
 
-  return day;
+  return () => {
+    clearTimeout(timer);
+    document.removeEventListener("visibilitychange", onVisible);
+  };
+}
+
+const getSnapshot = () => todayKey();
+
+// "Today" depends on the viewer's timezone, which the server cannot know: it
+// would render its own date (UTC on Vercel) and disagree with the browser.
+// Returning null for both the server render and hydration keeps them identical;
+// React swaps in the real date immediately afterwards.
+const getServerSnapshot = () => null;
+
+/**
+ * The current local date as `YYYY-MM-DD`, or null until hydration completes.
+ * Re-renders only when the day changes, never on an ordinary render.
+ */
+export function useToday(): string | null {
+  return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 }

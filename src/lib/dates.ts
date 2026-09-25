@@ -81,7 +81,9 @@ export function formatRemaining(remainingDays: number): string {
 }
 
 export function formatDateLabel(key: string): string {
-  return fromDateKey(key).toLocaleDateString(undefined, {
+  // A fixed locale, not the ambient one: Node and the browser resolve
+  // `undefined` differently, which would differ across hydration.
+  return fromDateKey(key).toLocaleDateString("en-GB", {
     day: "numeric",
     month: "short",
     year: "numeric",

@@ -7,7 +7,12 @@ import { useState, useTransition } from "react";
 import { DayBoxes } from "@/components/countdown/day-boxes";
 import { ChevronIcon, GripIcon, TrashIcon } from "@/components/icons";
 import { deleteCountdown, setCountdownCollapsed, updateCountdown } from "@/lib/actions";
-import { countdownProgress, formatDateLabel, formatRemaining } from "@/lib/dates";
+import {
+  countdownProgress,
+  daysBetween,
+  formatDateLabel,
+  formatRemaining,
+} from "@/lib/dates";
 import type { Countdown } from "@/lib/types";
 
 export function CountdownCard({
@@ -15,8 +20,8 @@ export function CountdownCard({
   today,
 }: {
   countdown: Countdown;
-  /** Today's local date, recomputed only when the day rolls over. */
-  today: string;
+  /** Today's local date, or null before mount. Changes only when the day does. */
+  today: string | null;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: countdown.id });
@@ -26,10 +31,14 @@ export function CountdownCard({
   const [endDate, setEndDate] = useState(countdown.end_date);
   const [, startTransition] = useTransition();
 
-  const progress = countdownProgress(
-    countdown.start_date,
-    countdown.end_date,
-    today,
+  // The span is fixed, but how much of it has elapsed depends on the viewer's
+  // timezone, so it stays neutral until `today` arrives on the client.
+  const progress = today
+    ? countdownProgress(countdown.start_date, countdown.end_date, today)
+    : null;
+  const totalDays = Math.max(
+    1,
+    daysBetween(countdown.start_date, countdown.end_date),
   );
 
   function toggleCollapsed() {
@@ -91,10 +100,10 @@ export function CountdownCard({
 
         <span
           className={`shrink-0 px-1 text-xs font-medium tabular-nums ${
-            progress.isOver ? "text-muted" : "text-accent"
+            progress?.isOver ? "text-muted" : "text-accent"
           }`}
         >
-          {formatRemaining(progress.remainingDays)}
+          {progress ? formatRemaining(progress.remainingDays) : "\u00a0"}
         </span>
 
         <button
@@ -110,15 +119,11 @@ export function CountdownCard({
 
       {collapsed ? null : (
         <div className="flex flex-col gap-3 px-3 pb-3">
-          <DayBoxes
-            totalDays={progress.totalDays}
-            elapsedDays={progress.elapsedDays}
-          />
+          <DayBoxes totalDays={totalDays} elapsedDays={progress?.elapsedDays ?? 0} />
 
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted">
             <span className="tabular-nums">
-              {progress.elapsedDays} / {progress.totalDays} days ·{" "}
-              {progress.percent}%
+              {progress ? `${progress.elapsedDays} / ${totalDays} days · ${progress.percent}%` : `${totalDays} days`}
             </span>
             <span aria-hidden="true">·</span>
             <span>{formatDateLabel(countdown.start_date)}</span>

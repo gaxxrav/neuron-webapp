@@ -65,6 +65,9 @@ export function CountdownBoard({ countdowns }: { countdowns: Countdown[] }) {
         </p>
       ) : (
         <DndContext
+          // See the note in tasks-board.tsx: a stable id keeps dnd-kit's
+          // generated aria ids identical across server and client renders.
+          id="countdown-board"
           sensors={sensors}
           collisionDetection={closestCenter}
           modifiers={[restrictToVerticalAxis]}
