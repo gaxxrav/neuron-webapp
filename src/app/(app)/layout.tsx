@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 
+import { SwipeTabs } from "@/components/swipe-tabs";
 import { TabNav } from "@/components/tab-nav";
 import { createClient } from "@/lib/supabase/server";
 
@@ -29,7 +30,9 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-6">{children}</main>
+      <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-6">
+        <SwipeTabs>{children}</SwipeTabs>
+      </main>
     </div>
   );
 }

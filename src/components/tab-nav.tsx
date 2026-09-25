@@ -19,6 +19,12 @@ export function TabNav() {
           <Link
             key={tab.href}
             href={tab.href}
+            // Both pages are force-dynamic, and dynamic segments are not kept
+            // in the client cache by default (staleTimes.dynamic is 0). An
+            // explicit prefetch pulls the whole payload up front and reuses it
+            // for the static window, so switching does not re-render on the
+            // server every time. Server actions still invalidate it on write.
+            prefetch
             aria-current={active ? "page" : undefined}
             className={`rounded-lg px-3 py-1.5 text-sm font-medium transition ${
               active

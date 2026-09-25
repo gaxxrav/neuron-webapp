@@ -57,14 +57,7 @@ export type Workspace = {
 export async function loadWorkspace(): Promise<Workspace> {
   const { supabase, userId } = await requireUser();
 
-  // Both are created lazily on first load: the priority section, and an
-  // ordinary list for everything else. Without the latter a new account has
-  // nowhere to put an unticked item, which would force every item to be a
-  // priority.
-  await ensurePrioritySection();
-  await ensureDefaultSection();
-
-  const [sectionsRes, itemsRes, eventsRes] = await Promise.all([
+  const [initialSections, itemsRes, eventsRes] = await Promise.all([
     supabase
       .from("sections")
       .select("*")
@@ -82,12 +75,33 @@ export async function loadWorkspace(): Promise<Workspace> {
       .not("work_item_id", "is", null),
   ]);
 
-  if (sectionsRes.error) throw sectionsRes.error;
+  if (initialSections.error) throw initialSections.error;
   if (itemsRes.error) throw itemsRes.error;
   if (eventsRes.error) throw eventsRes.error;
 
+  // A new account needs a priority section and an ordinary list to exist.
+  // Creating them used to run on every single load, costing two sequential
+  // queries forever to fix something that is only ever wrong once. Read
+  // first, and only repair when something is genuinely absent.
+  let sections = initialSections.data as Section[];
+  const missingPriority = !sections.some((s) => s.kind === "priority");
+  const missingDefault = !sections.some((s) => s.kind === "normal");
+
+  if (missingPriority || missingDefault) {
+    if (missingPriority) await ensurePrioritySection();
+    if (missingDefault) await ensureDefaultSection();
+
+    const repaired = await supabase
+      .from("sections")
+      .select("*")
+      .eq("user_id", userId)
+      .order("position", { ascending: true });
+    if (repaired.error) throw repaired.error;
+    sections = repaired.data as Section[];
+  }
+
   return {
-    sections: sectionsRes.data as Section[],
+    sections,
     items: itemsRes.data as Task[],
     visualisedItemIds: (eventsRes.data ?? [])
       .map((r) => r.work_item_id as string)
