@@ -69,7 +69,7 @@ export function WorkItemRow({ item, visualised, priority }: Props) {
           {...attributes}
           {...listeners}
           aria-label={`Reorder ${item.title}`}
-          className="cursor-grab touch-none text-muted/50 opacity-0 transition group-hover:opacity-100 focus-visible:opacity-100 active:cursor-grabbing"
+          className="cursor-grab touch-none text-muted/50 hover-capable:opacity-0 transition group-hover:opacity-100 focus-visible:opacity-100 active:cursor-grabbing"
         >
           <GripIcon className="size-4" />
         </button>
@@ -120,10 +120,10 @@ export function WorkItemRow({ item, visualised, priority }: Props) {
           onClick={() => board.togglePriority(item.id)}
           aria-pressed={priority}
           title={priority ? "Remove from priority" : "Make priority"}
-          className={`shrink-0 rounded p-1 transition ${
+          className={`shrink-0 rounded p-2.5 sm:p-1 transition ${
             priority
               ? "text-priority"
-              : "text-muted/50 opacity-0 hover:text-priority group-hover:opacity-100 focus-visible:opacity-100"
+              : "text-muted/50 hover-capable:opacity-0 hover:text-priority group-hover:opacity-100 focus-visible:opacity-100"
           }`}
         >
           <FlagIcon className="size-4" filled={priority} />
@@ -134,10 +134,10 @@ export function WorkItemRow({ item, visualised, priority }: Props) {
           onClick={toggleVisualised}
           aria-pressed={visualised}
           title={visualised ? "Remove from visualisation" : "Add to visualisation"}
-          className={`shrink-0 rounded p-1 transition ${
+          className={`shrink-0 rounded p-2.5 sm:p-1 transition ${
             visualised
               ? "text-accent"
-              : "text-muted/50 opacity-0 hover:text-foreground group-hover:opacity-100 focus-visible:opacity-100"
+              : "text-muted/50 hover-capable:opacity-0 hover:text-foreground group-hover:opacity-100 focus-visible:opacity-100"
           }`}
         >
           <ChartIcon className="size-4" />
@@ -148,7 +148,7 @@ export function WorkItemRow({ item, visualised, priority }: Props) {
           onClick={() => board.remove(item.id)}
           title="Delete item"
           aria-label={`Delete ${item.title}`}
-          className="shrink-0 rounded p-1 text-muted/50 opacity-0 transition hover:text-priority group-hover:opacity-100 focus-visible:opacity-100"
+          className="shrink-0 rounded p-2.5 text-muted/50 sm:p-1 hover-capable:opacity-0 transition hover:text-priority group-hover:opacity-100 focus-visible:opacity-100"
         >
           <TrashIcon className="size-4" />
         </button>

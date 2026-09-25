@@ -1,5 +1,13 @@
 @import "tailwindcss";
 
+/*
+ * Reveal-on-hover, but only on devices that actually hover. A touch screen has
+ * no hover state, so `opacity-0 group-hover:opacity-100` left every row control
+ * permanently invisible and unreachable. Guarding the hidden state behind this
+ * variant means touch devices simply show the controls.
+ */
+@custom-variant hover-capable (@media (hover: hover) and (pointer: fine));
+
 /* Design tokens. Light by default, overridden for dark mode below. */
 :root {
   --background: #fafaf9;

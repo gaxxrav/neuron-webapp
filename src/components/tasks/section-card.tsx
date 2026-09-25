@@ -80,7 +80,7 @@ export function SectionCard({ section, items, visualisedItemIds }: Props) {
             {...attributes}
             {...listeners}
             aria-label={`Reorder ${section.name} section`}
-            className="cursor-grab touch-none rounded p-1 text-muted/50 opacity-0 transition group-hover/header:opacity-100 focus-visible:opacity-100 active:cursor-grabbing"
+            className="cursor-grab touch-none rounded p-2.5 text-muted/50 sm:p-1 hover-capable:opacity-0 transition group-hover/header:opacity-100 focus-visible:opacity-100 active:cursor-grabbing"
           >
             <GripIcon className="size-4" />
           </button>
@@ -91,7 +91,7 @@ export function SectionCard({ section, items, visualisedItemIds }: Props) {
           onClick={toggleCollapsed}
           aria-expanded={!collapsed}
           aria-label={collapsed ? `Expand ${section.name}` : `Collapse ${section.name}`}
-          className="rounded p-1 text-muted transition hover:text-foreground"
+          className="rounded p-2.5 text-muted transition hover:text-foreground sm:p-1"
         >
           <ChevronIcon
             className={`size-4 transition-transform ${collapsed ? "" : "rotate-90"}`}
@@ -144,7 +144,7 @@ export function SectionCard({ section, items, visualisedItemIds }: Props) {
               if (ok) startTransition(() => deleteSection(section.id));
             }}
             aria-label={`Delete ${section.name} section`}
-            className="shrink-0 rounded p-1 text-muted/50 opacity-0 transition hover:text-priority group-hover/header:opacity-100 focus-visible:opacity-100"
+            className="shrink-0 rounded p-2.5 text-muted/50 sm:p-1 hover-capable:opacity-0 transition hover:text-priority group-hover/header:opacity-100 focus-visible:opacity-100"
           >
             <TrashIcon className="size-4" />
           </button>

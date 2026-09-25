@@ -68,7 +68,7 @@ export function CountdownCard({
           {...attributes}
           {...listeners}
           aria-label={`Reorder ${countdown.title}`}
-          className="cursor-grab touch-none rounded p-1 text-muted/50 opacity-0 transition group-hover:opacity-100 focus-visible:opacity-100 active:cursor-grabbing"
+          className="cursor-grab touch-none rounded p-2.5 text-muted/50 sm:p-1 hover-capable:opacity-0 transition group-hover:opacity-100 focus-visible:opacity-100 active:cursor-grabbing"
         >
           <GripIcon className="size-4" />
         </button>
@@ -78,7 +78,7 @@ export function CountdownCard({
           onClick={toggleCollapsed}
           aria-expanded={!collapsed}
           aria-label={collapsed ? `Expand ${countdown.title}` : `Collapse ${countdown.title}`}
-          className="rounded p-1 text-muted transition hover:text-foreground"
+          className="rounded p-2.5 text-muted transition hover:text-foreground sm:p-1"
         >
           <ChevronIcon
             className={`size-4 transition-transform ${collapsed ? "" : "rotate-90"}`}
@@ -111,7 +111,7 @@ export function CountdownCard({
           onClick={() => startTransition(() => deleteCountdown(countdown.id))}
           aria-label={`Remove ${countdown.title} from the visualisation`}
           title="Remove from visualisation"
-          className="shrink-0 rounded p-1 text-muted/50 opacity-0 transition hover:text-priority group-hover:opacity-100 focus-visible:opacity-100"
+          className="shrink-0 rounded p-2.5 text-muted/50 sm:p-1 hover-capable:opacity-0 transition hover:text-priority group-hover:opacity-100 focus-visible:opacity-100"
         >
           <TrashIcon className="size-4" />
         </button>

@@ -388,9 +388,20 @@ export async function renameWorkItem(id: string, title: string): Promise<void> {
 
 export async function deleteWorkItem(id: string): Promise<void> {
   const { supabase } = await requireUser();
-  // The linked countdown, if any, goes with it via on delete cascade.
+
+  // Any linked countdown is removed explicitly first. The foreign key is
+  // declared `on delete cascade`, so this is belt and braces — but it keeps
+  // the delete working even where that constraint is missing, and it makes
+  // the intent visible at the call site rather than hidden in the schema.
+  const { error: countdownError } = await supabase
+    .from("countdowns")
+    .delete()
+    .eq("work_item_id", id);
+  if (countdownError) throw countdownError;
+
   const { error } = await supabase.from("work_items").delete().eq("id", id);
   if (error) throw error;
+
   refresh("all");
 }
 

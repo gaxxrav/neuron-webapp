@@ -56,6 +56,7 @@ export function TasksBoard({ sections, items, visualisedItemIds }: Props) {
   const [localItems, setLocalItems] = useServerState(items);
   const [localVisualised, setLocalVisualised] = useServerState(visualisedItemIds);
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [, startTransition] = useTransition();
 
   // Section an item was picked up from, captured before drag-over relocates it.
@@ -90,11 +91,15 @@ export function TasksBoard({ sections, items, visualisedItemIds }: Props) {
     // is not guaranteed to have run by the time the catch needs it.
     const snapshot = localItems;
     setLocalItems(apply);
+    setError(null);
     startTransition(async () => {
       try {
         await persist();
-      } catch {
+      } catch (e) {
+        // Rolling back silently made a failed write look like a no-op, with
+        // the row simply reappearing and no explanation.
         setLocalItems(snapshot);
+        setError(e instanceof Error ? e.message : "That change did not save.");
       }
     });
   }
@@ -177,8 +182,9 @@ export function TasksBoard({ sections, items, visualisedItemIds }: Props) {
             endDate,
             on ? todayKey() : undefined,
           );
-        } catch {
+        } catch (e) {
           setLocalVisualised(snapshot);
+          setError(e instanceof Error ? e.message : "That change did not save.");
         }
       });
     },
@@ -315,6 +321,22 @@ export function TasksBoard({ sections, items, visualisedItemIds }: Props) {
   return (
     <BoardProvider value={boardActions}>
       <div className="flex flex-col gap-4">
+        {error ? (
+          <div
+            role="alert"
+            className="flex items-start gap-3 rounded-xl border border-priority-border bg-priority-soft px-3 py-2 text-sm text-priority"
+          >
+            <span className="flex-1">{error}</span>
+            <button
+              type="button"
+              onClick={() => setError(null)}
+              className="shrink-0 font-medium underline underline-offset-2"
+            >
+              Dismiss
+            </button>
+          </div>
+        ) : null}
+
         <AddItemForm sections={normalSections} />
 
         <DndContext
