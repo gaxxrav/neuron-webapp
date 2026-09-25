@@ -24,18 +24,23 @@ Next.js 16 (App Router) · Supabase (Postgres + Auth) · Tailwind v4 · dnd-kit.
    This creates the three tables and the row-level-security policies that scope
    every row to its owner.
 
-### 2. Enable Google sign-in
+### 2. Configure email + password sign-in
 
-1. In Google Cloud Console → **APIs & Services → Credentials**, create an
-   **OAuth 2.0 Client ID** of type *Web application*.
-2. Add this authorised redirect URI, using your project ref:
-   `https://<project-ref>.supabase.co/auth/v1/callback`
-3. In Supabase → **Authentication → Providers → Google**, enable it and paste
-   the client ID and secret.
-4. In Supabase → **Authentication → URL Configuration**, set **Site URL** to your
-   production URL and add these to **Redirect URLs**:
-   - `http://localhost:3000/auth/callback`
-   - `https://<your-app>.vercel.app/auth/callback`
+In the Supabase dashboard:
+
+1. **Authentication → Sign In / Providers → Email** — make sure **Enable email
+   provider** is on (it is by default).
+2. Turn **Confirm email** *off*. Supabase's built-in mailer allows only a
+   couple of messages an hour and is not meant for production, so with
+   confirmation off the app sends no email at all and you can sign in
+   immediately after creating the account.
+3. **Authentication → URL Configuration** — set **Site URL** to
+   `http://localhost:3000`, and add `http://localhost:3000/**` under
+   **Redirect URLs**. Add your Vercel URL to both after deploying.
+
+There is no public sign-up page beyond the one form: create your account once,
+then consider switching **Allow new users to sign up** off under
+**Authentication → Sign In / Providers** so nobody else can register.
 
 ### 3. Run it locally
 
@@ -45,16 +50,21 @@ npm install
 npm run dev
 ```
 
-Both env values come from Supabase → **Project Settings → API**. They are safe in
-the browser: the anon key only grants what row-level security allows. **Never** add
-the `service_role` key — this repository is public.
+Both env values come from Supabase → **Project Settings → API Keys**: the project
+URL, and the **anon public** key (newer projects label this the *publishable*
+key — either works). They are safe in the browser; the anon key only grants what
+row-level security allows. **Never** add the `service_role` or any `sb_secret_`
+key — this repository is public.
+
+On first run, open http://localhost:3000, choose **Create an account**, and sign in.
 
 ### 4. Deploy to Vercel
 
 1. Import the repo at [vercel.com/new](https://vercel.com/new).
 2. Add `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` as
    environment variables for all environments.
-3. Deploy, then add the resulting URL to the Supabase redirect list in step 2.4.
+3. Deploy, then add the resulting URL to **Site URL** and **Redirect URLs** in
+   Supabase (step 2.3).
 
 ---
 
@@ -64,6 +74,8 @@ the `service_role` key — this repository is public.
 | --- | --- |
 | `supabase/migrations/` | Schema and RLS policies |
 | `src/proxy.ts` | Refreshes the session cookie, redirects signed-out visitors |
+| `src/app/login/actions.ts` | Sign-in and sign-up, as server actions |
+| `src/app/auth/callback/` | Code exchange, used only if you re-enable email confirmation or add password reset |
 | `src/lib/actions.ts` | Every read and write, as server actions |
 | `src/lib/dates.ts` | Calendar-day maths for countdowns |
 | `src/lib/use-today.ts` | Re-renders countdowns only when the local day rolls over |

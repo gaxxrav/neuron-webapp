@@ -1,4 +1,4 @@
-import { GoogleButton } from "./google-button";
+import { EmailForm } from "./email-form";
 
 export default async function LoginPage({ searchParams }: PageProps<"/login">) {
   const params = await searchParams;
@@ -14,7 +14,7 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
           Your work items and countdowns, in one place.
         </p>
 
-        <GoogleButton next={next} />
+        <EmailForm next={next} />
 
         {error ? (
           <p role="alert" className="mt-4 text-sm text-priority">
