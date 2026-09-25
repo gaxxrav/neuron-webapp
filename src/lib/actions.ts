@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import type { Countdown, Section, WorkItem } from "@/lib/types";
 
 const PRIORITY_SECTION_NAME = "Priority";
+const DEFAULT_SECTION_NAME = "To do";
 
 async function requireUser() {
   const supabase = await createClient();
@@ -40,9 +41,12 @@ export type Workspace = {
 export async function loadWorkspace(): Promise<Workspace> {
   const { supabase, userId } = await requireUser();
 
-  // The priority section is created lazily on first load so a brand new
-  // account always has somewhere to put priority items.
+  // Both are created lazily on first load: the priority section, and an
+  // ordinary list for everything else. Without the latter a new account has
+  // nowhere to put an unticked item, which would force every item to be a
+  // priority.
   await ensurePrioritySection();
+  await ensureDefaultSection();
 
   const [sectionsRes, itemsRes, countdownsRes] = await Promise.all([
     supabase
@@ -129,6 +133,39 @@ export async function ensurePrioritySection(): Promise<string> {
   return data.id as string;
 }
 
+/**
+ * The landing place for items that are not marked as priority. Recreated if
+ * every ordinary section has been deleted, so there is always a plain list.
+ */
+export async function ensureDefaultSection(): Promise<string> {
+  const { supabase, userId } = await requireUser();
+
+  const { data: existing } = await supabase
+    .from("sections")
+    .select("id")
+    .eq("user_id", userId)
+    .eq("kind", "normal")
+    .order("position", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
+  if (existing) return existing.id as string;
+
+  const { data, error } = await supabase
+    .from("sections")
+    .insert({
+      user_id: userId,
+      name: DEFAULT_SECTION_NAME,
+      kind: "normal",
+      position: 0,
+    })
+    .select("id")
+    .single();
+  if (error) throw error;
+
+  return data.id as string;
+}
+
 export async function createSection(name: string): Promise<void> {
   const { supabase, userId } = await requireUser();
   const trimmed = name.trim();
@@ -207,7 +244,7 @@ export async function reorderSections(orderedIds: string[]): Promise<void> {
 
 export type CreateWorkItemInput = {
   title: string;
-  /** Ignored when `priority` is set: priority items always go to that section. */
+  /** Ignored when `priority` is set; falls back to the default list if empty. */
   sectionId: string;
   priority: boolean;
   addToVisualisation: boolean;
@@ -221,10 +258,12 @@ export async function createWorkItem(input: CreateWorkItemInput): Promise<void> 
   const title = input.title.trim();
   if (!title) return;
 
+  // Priority is opt-in: an unticked item goes to its chosen section, or to
+  // the default list when none was chosen.
   const sectionId = input.priority
     ? await ensurePrioritySection()
-    : input.sectionId;
-  if (!sectionId) throw new Error("Pick a section for this item.");
+    : (input.sectionId || (await ensureDefaultSection()));
+  if (!sectionId) throw new Error("Could not find a section for this item.");
 
   const { data: siblings } = await supabase
     .from("work_items")

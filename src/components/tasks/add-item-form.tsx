@@ -16,10 +16,6 @@ export function AddItemForm({ sections }: { sections: Section[] }) {
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
-  // With no normal sections yet, the only valid destination is the priority one.
-  const mustBePriority = sections.length === 0;
-  const effectivePriority = priority || mustBePriority;
-
   // The selected section can disappear underneath us (deleted, or none chosen
   // yet), so always fall back to the first one that still exists.
   const activeSectionId = sections.some((s) => s.id === sectionId)
@@ -42,8 +38,9 @@ export function AddItemForm({ sections }: { sections: Section[] }) {
 
     const payload = {
       title,
-      sectionId: effectivePriority ? "" : activeSectionId,
-      priority: effectivePriority,
+      // Empty means "the server picks the default list".
+      sectionId: priority ? "" : activeSectionId,
+      priority,
       addToVisualisation: visualise,
       endDate: visualise ? endDate : undefined,
       startDate: visualise ? startDate : undefined,
@@ -89,8 +86,7 @@ export function AddItemForm({ sections }: { sections: Section[] }) {
         <label className="flex items-center gap-2 text-priority">
           <input
             type="checkbox"
-            checked={effectivePriority}
-            disabled={mustBePriority}
+            checked={priority}
             onChange={(e) => setPriority(e.target.checked)}
             className="size-4 accent-[var(--priority)]"
           />
@@ -107,7 +103,7 @@ export function AddItemForm({ sections }: { sections: Section[] }) {
           Add to visualisation
         </label>
 
-        {!effectivePriority && sections.length > 0 ? (
+        {!priority && sections.length > 0 ? (
           <label className="flex items-center gap-2 text-muted">
             <span>in</span>
             <select
