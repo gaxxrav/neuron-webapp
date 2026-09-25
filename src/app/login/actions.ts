@@ -4,12 +4,7 @@ import { redirect } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
 
-export type AuthState = {
-  error: string | null;
-  notice: string | null;
-};
-
-export const initialAuthState: AuthState = { error: null, notice: null };
+import type { AuthState } from "./auth-state";
 
 /** Only ever redirect to a path on this app, never an attacker-supplied host. */
 function safePath(value: FormDataEntryValue | null): string {

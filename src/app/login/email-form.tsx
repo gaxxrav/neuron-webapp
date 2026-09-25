@@ -3,7 +3,8 @@
 import { useActionState, useState } from "react";
 import { useFormStatus } from "react-dom";
 
-import { authenticate, initialAuthState } from "./actions";
+import { authenticate } from "./actions";
+import { initialAuthState } from "./auth-state";
 
 function SubmitButton({ signingUp }: { signingUp: boolean }) {
   const { pending } = useFormStatus();
