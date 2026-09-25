@@ -1,36 +1,85 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Neuron
 
-## Getting Started
+A personal work-item tracker with a day-by-day countdown visualiser.
 
-First, run the development server:
+**Work items** live in collapsible, drag-reorderable sections. A red **Priority**
+section is pinned at the top and cannot be moved or deleted. Ticking
+*add to visualisation* on an item creates a linked countdown on the second tab.
+
+**Countdowns** render one box per day of a span, filling in each day that has
+completed. The list is independent of the task list — a countdown can stand
+alone, or be linked to a work item.
+
+Next.js 16 (App Router) · Supabase (Postgres + Auth) · Tailwind v4 · dnd-kit.
+
+---
+
+## Setup
+
+### 1. Create the Supabase project
+
+1. Create a project at [supabase.com/dashboard](https://supabase.com/dashboard).
+2. Open **SQL Editor**, paste the contents of
+   [`supabase/migrations/0001_init.sql`](supabase/migrations/0001_init.sql), and run it.
+   This creates the three tables and the row-level-security policies that scope
+   every row to its owner.
+
+### 2. Enable Google sign-in
+
+1. In Google Cloud Console → **APIs & Services → Credentials**, create an
+   **OAuth 2.0 Client ID** of type *Web application*.
+2. Add this authorised redirect URI, using your project ref:
+   `https://<project-ref>.supabase.co/auth/v1/callback`
+3. In Supabase → **Authentication → Providers → Google**, enable it and paste
+   the client ID and secret.
+4. In Supabase → **Authentication → URL Configuration**, set **Site URL** to your
+   production URL and add these to **Redirect URLs**:
+   - `http://localhost:3000/auth/callback`
+   - `https://<your-app>.vercel.app/auth/callback`
+
+### 3. Run it locally
 
 ```bash
+cp .env.example .env.local   # then fill in the two values
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Both env values come from Supabase → **Project Settings → API**. They are safe in
+the browser: the anon key only grants what row-level security allows. **Never** add
+the `service_role` key — this repository is public.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### 4. Deploy to Vercel
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+1. Import the repo at [vercel.com/new](https://vercel.com/new).
+2. Add `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` as
+   environment variables for all environments.
+3. Deploy, then add the resulting URL to the Supabase redirect list in step 2.4.
 
-## Learn More
+---
 
-To learn more about Next.js, take a look at the following resources:
+## How the pieces fit
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+| Path | Role |
+| --- | --- |
+| `supabase/migrations/` | Schema and RLS policies |
+| `src/proxy.ts` | Refreshes the session cookie, redirects signed-out visitors |
+| `src/lib/actions.ts` | Every read and write, as server actions |
+| `src/lib/dates.ts` | Calendar-day maths for countdowns |
+| `src/lib/use-today.ts` | Re-renders countdowns only when the local day rolls over |
+| `src/components/tasks/` | Sections, items, drag and drop |
+| `src/components/countdown/` | Countdown cards and the day-box grid |
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### Countdown refresh behaviour
 
-## Deploy on Vercel
+Progress is derived from calendar dates, never from timestamps, so it changes
+only when the local date does. `useToday` arms a single timer for the next local
+midnight instead of polling, and re-checks when the tab regains focus (a laptop
+asleep past midnight never fires its timer on time). Nothing recalculates on an
+ordinary render or page load within the same day.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### Ordering
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+`sections`, `work_items` and `countdowns` each carry an integer `position`.
+A drag renumbers the affected list and persists it. The priority section is
+excluded from section reordering and sits at `position = -1` as a safety net.
