@@ -16,7 +16,13 @@ export type BoardActions = {
   rename: (id: string, title: string) => void;
   remove: (id: string) => void;
   togglePriority: (id: string) => void;
-  setVisualised: (id: string, on: boolean, endDate?: string) => void;
+  /**
+   * One-way by design: an item can be added to the visualisation from here,
+   * but a countdown is only ever removed from the Countdowns tab. Deleting
+   * something from two places invites deleting it by accident from the one
+   * you were not thinking about.
+   */
+  addToVisualisation: (id: string, endDate: string) => void;
 };
 
 const BoardContext = createContext<BoardActions | null>(null);

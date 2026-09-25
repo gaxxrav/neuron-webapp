@@ -39,19 +39,11 @@ export function WorkItemRow({ item, visualised, priority }: Props) {
     board.rename(item.id, next);
   }
 
-  function toggleVisualised() {
-    if (visualised) {
-      board.setVisualised(item.id, false);
-    } else {
-      setDateOpen((open) => !open);
-    }
-  }
-
   function confirmVisualise(event: React.FormEvent) {
     event.preventDefault();
     if (!endDate) return;
     setDateOpen(false);
-    board.setVisualised(item.id, true, endDate);
+    board.addToVisualisation(item.id, endDate);
     setEndDate("");
   }
 
@@ -129,19 +121,25 @@ export function WorkItemRow({ item, visualised, priority }: Props) {
           <FlagIcon className="size-4" filled={priority} />
         </button>
 
-        <button
-          type="button"
-          onClick={toggleVisualised}
-          aria-pressed={visualised}
-          title={visualised ? "Remove from visualisation" : "Add to visualisation"}
-          className={`shrink-0 rounded p-2.5 sm:p-1 transition ${
-            visualised
-              ? "text-accent"
-              : "text-muted/50 hover-capable:opacity-0 hover:text-foreground group-hover:opacity-100 focus-visible:opacity-100"
-          }`}
-        >
-          <ChartIcon className="size-4" />
-        </button>
+        {visualised ? (
+          // Deliberately inert: removal lives on the Countdowns tab only.
+          <span
+            title="In the visualisation — remove it from the Countdowns tab"
+            aria-label="In the visualisation"
+            className="shrink-0 p-2.5 text-accent sm:p-1"
+          >
+            <ChartIcon className="size-4" />
+          </span>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setDateOpen((open) => !open)}
+            title="Add to visualisation"
+            className="shrink-0 rounded p-2.5 text-muted/50 transition hover:text-foreground focus-visible:opacity-100 sm:p-1 hover-capable:opacity-0 group-hover:opacity-100"
+          >
+            <ChartIcon className="size-4" />
+          </button>
+        )}
 
         <button
           type="button"

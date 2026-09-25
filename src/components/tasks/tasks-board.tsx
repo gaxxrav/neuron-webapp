@@ -169,19 +169,13 @@ export function TasksBoard({ sections, items, visualisedItemIds }: Props) {
       );
     },
 
-    setVisualised(id, on, endDate) {
+    addToVisualisation(id, endDate) {
       const snapshot = localVisualised;
-      setLocalVisualised((current) =>
-        on ? [...current, id] : current.filter((v) => v !== id),
-      );
+      setLocalVisualised((current) => [...current, id]);
+      setError(null);
       startTransition(async () => {
         try {
-          await setWorkItemVisualised(
-            id,
-            on,
-            endDate,
-            on ? todayKey() : undefined,
-          );
+          await setWorkItemVisualised(id, true, endDate, todayKey());
         } catch (e) {
           setLocalVisualised(snapshot);
           setError(e instanceof Error ? e.message : "That change did not save.");
