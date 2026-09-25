@@ -108,7 +108,16 @@ export function CountdownCard({
 
         <button
           type="button"
-          onClick={() => startTransition(() => deleteCountdown(countdown.id))}
+          onClick={() => {
+            // The inverse case: removing a countdown never touches the work
+            // item it came from.
+            const message = countdown.work_item_id
+              ? `Remove \u201c${countdown.title}\u201d from the visualisation? The work item stays in your list.`
+              : `Delete the countdown \u201c${countdown.title}\u201d?`;
+            if (window.confirm(message)) {
+              startTransition(() => deleteCountdown(countdown.id));
+            }
+          }}
           aria-label={`Remove ${countdown.title} from the visualisation`}
           title="Remove from visualisation"
           className="shrink-0 rounded p-2.5 text-muted/50 sm:p-1 hover-capable:opacity-0 transition hover:text-priority group-hover:opacity-100 focus-visible:opacity-100"

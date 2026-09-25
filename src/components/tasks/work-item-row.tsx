@@ -143,7 +143,14 @@ export function WorkItemRow({ item, visualised, priority }: Props) {
 
         <button
           type="button"
-          onClick={() => board.remove(item.id)}
+          onClick={() => {
+            // Spell out the knock-on effect: deleting a visualised item takes
+            // its countdown with it, which is not obvious from this tab.
+            const message = visualised
+              ? `Delete \u201c${item.title}\u201d? Its countdown will be removed too.`
+              : `Delete \u201c${item.title}\u201d?`;
+            if (window.confirm(message)) board.remove(item.id);
+          }}
           title="Delete item"
           aria-label={`Delete ${item.title}`}
           className="shrink-0 rounded p-2.5 text-muted/50 sm:p-1 hover-capable:opacity-0 transition hover:text-priority group-hover:opacity-100 focus-visible:opacity-100"
