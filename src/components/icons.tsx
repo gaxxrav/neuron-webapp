@@ -82,3 +82,25 @@ export function PlusIcon({ className }: IconProps) {
     </svg>
   );
 }
+
+/** Promote/demote a work item to or from the priority section. */
+export function FlagIcon({
+  className,
+  filled = false,
+}: IconProps & { filled?: boolean }) {
+  return (
+    <svg
+      viewBox="0 0 20 20"
+      fill={filled ? "currentColor" : "none"}
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      className={className}
+    >
+      <path d="M5 17.5V3.5" />
+      <path d="M5 4.2h8.5l-1.8 3.1 1.8 3.1H5z" />
+    </svg>
+  );
+}

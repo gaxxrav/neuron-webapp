@@ -14,6 +14,8 @@ export type WorkItem = {
   id: string;
   user_id: string;
   section_id: string;
+  /** Where the item sat before being promoted to priority, if anywhere. */
+  previous_section_id: string | null;
   title: string;
   notes: string | null;
   done: boolean;

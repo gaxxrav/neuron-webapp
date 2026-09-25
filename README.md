@@ -19,10 +19,14 @@ Next.js 16 (App Router) · Supabase (Postgres + Auth) · Tailwind v4 · dnd-kit.
 ### 1. Create the Supabase project
 
 1. Create a project at [supabase.com/dashboard](https://supabase.com/dashboard).
-2. Open **SQL Editor**, paste the contents of
-   [`supabase/migrations/0001_init.sql`](supabase/migrations/0001_init.sql), and run it.
-   This creates the three tables and the row-level-security policies that scope
-   every row to its owner.
+2. Open **SQL Editor** and run each file in
+   [`supabase/migrations/`](supabase/migrations) in filename order:
+   - `0001_init.sql` — the three tables, plus the row-level-security policies
+     that scope every row to its owner.
+   - `0002_work_item_previous_section.sql` — remembers where an item was before
+     it was promoted to priority, so un-prioritising sends it back.
+
+   Every migration is safe to re-run.
 
 ### 2. Configure email + password sign-in
 

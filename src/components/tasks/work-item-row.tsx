@@ -4,11 +4,12 @@ import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { useState, useTransition } from "react";
 
-import { ChartIcon, GripIcon, TrashIcon } from "@/components/icons";
+import { ChartIcon, FlagIcon, GripIcon, TrashIcon } from "@/components/icons";
 import {
   deleteWorkItem,
   renameWorkItem,
   setWorkItemDone,
+  setWorkItemPriority,
   setWorkItemVisualised,
 } from "@/lib/actions";
 import { todayKey } from "@/lib/dates";
@@ -121,6 +122,22 @@ export function WorkItemRow({ item, visualised, priority }: Props) {
             {item.title}
           </button>
         )}
+
+        <button
+          type="button"
+          onClick={() =>
+            startTransition(() => setWorkItemPriority(item.id, !priority))
+          }
+          aria-pressed={priority}
+          title={priority ? "Remove from priority" : "Make priority"}
+          className={`shrink-0 rounded p-1 transition ${
+            priority
+              ? "text-priority"
+              : "text-muted/50 opacity-0 hover:text-priority group-hover:opacity-100 focus-visible:opacity-100"
+          }`}
+        >
+          <FlagIcon className="size-4" filled={priority} />
+        </button>
 
         <button
           type="button"

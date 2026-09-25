@@ -292,6 +292,65 @@ export async function createWorkItem(input: CreateWorkItemInput): Promise<void> 
   refresh();
 }
 
+/**
+ * Moves an item into or out of the priority section without dragging.
+ *
+ * Promoting records the section it came from; demoting sends it back there,
+ * falling back to the default list when that section is gone (the column is
+ * `on delete set null`) or was never recorded. The item lands at the bottom
+ * of wherever it arrives.
+ */
+export async function setWorkItemPriority(
+  id: string,
+  priority: boolean,
+): Promise<void> {
+  const { supabase } = await requireUser();
+
+  const { data: item, error: readError } = await supabase
+    .from("work_items")
+    .select("section_id, previous_section_id")
+    .eq("id", id)
+    .single();
+  if (readError) throw readError;
+
+  const prioritySectionId = await ensurePrioritySection();
+  const isPriority = item.section_id === prioritySectionId;
+  if (priority === isPriority) return;
+
+  let target: string;
+  let previous: string | null;
+
+  if (priority) {
+    target = prioritySectionId;
+    previous = item.section_id as string;
+  } else {
+    const remembered = item.previous_section_id as string | null;
+    // Guard against a stale self-reference sending it straight back.
+    target =
+      remembered && remembered !== prioritySectionId
+        ? remembered
+        : await ensureDefaultSection();
+    previous = null;
+  }
+
+  const { data: siblings } = await supabase
+    .from("work_items")
+    .select("position")
+    .eq("section_id", target);
+
+  const { error } = await supabase
+    .from("work_items")
+    .update({
+      section_id: target,
+      previous_section_id: previous,
+      position: nextPosition(siblings ?? []),
+    })
+    .eq("id", id);
+  if (error) throw error;
+
+  refresh();
+}
+
 export async function setWorkItemDone(id: string, done: boolean): Promise<void> {
   const { supabase } = await requireUser();
   const { error } = await supabase.from("work_items").update({ done }).eq("id", id);
