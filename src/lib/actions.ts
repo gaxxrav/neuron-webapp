@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { cache } from "react";
 
 import { createClient } from "@/lib/supabase/server";
 import type { Countdown, Section, WorkItem } from "@/lib/types";
@@ -8,18 +9,33 @@ import type { Countdown, Section, WorkItem } from "@/lib/types";
 const PRIORITY_SECTION_NAME = "Priority";
 const DEFAULT_SECTION_NAME = "To do";
 
-async function requireUser() {
+/**
+ * The signed-in user and a Supabase client, resolved once per request.
+ *
+ * `auth.getUser()` re-validates the JWT against Supabase's auth server on
+ * every call — it never reads from cache — so an action that called this
+ * three times paid three network round trips. React's `cache` memoises for
+ * the lifetime of one request, so the many call sites below now share a
+ * single validation.
+ */
+const requireUser = cache(async () => {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) throw new Error("Not signed in.");
   return { supabase, userId: user.id };
-}
+});
 
-function refresh() {
-  revalidatePath("/tasks");
-  revalidatePath("/countdown");
+/**
+ * Revalidating both tabs on every write meant ticking a task refetched the
+ * countdown data too. Each action now names the routes its change is visible
+ * on. "all" is for writes that cascade across both, such as deleting an item
+ * that owns a countdown.
+ */
+function refresh(scope: "tasks" | "countdowns" | "all") {
+  if (scope !== "countdowns") revalidatePath("/tasks");
+  if (scope !== "tasks") revalidatePath("/countdown");
 }
 
 /** Position one past the current maximum, so new rows land at the bottom. */
@@ -184,7 +200,7 @@ export async function createSection(name: string): Promise<void> {
     position: nextPosition(siblings ?? []),
   });
   if (error) throw error;
-  refresh();
+  refresh("tasks");
 }
 
 export async function renameSection(id: string, name: string): Promise<void> {
@@ -196,7 +212,7 @@ export async function renameSection(id: string, name: string): Promise<void> {
     .update({ name: trimmed.slice(0, 80) })
     .eq("id", id);
   if (error) throw error;
-  refresh();
+  refresh("tasks");
 }
 
 /** Deletes a normal section and, by cascade, the work items inside it. */
@@ -208,7 +224,7 @@ export async function deleteSection(id: string): Promise<void> {
     .eq("id", id)
     .eq("kind", "normal"); // The priority section is not deletable.
   if (error) throw error;
-  refresh();
+  refresh("all");
 }
 
 export async function setSectionCollapsed(
@@ -235,7 +251,7 @@ export async function reorderSections(orderedIds: string[]): Promise<void> {
         .eq("kind", "normal"),
     ),
   );
-  refresh();
+  refresh("tasks");
 }
 
 // ---------------------------------------------------------------------------
@@ -289,7 +305,7 @@ export async function createWorkItem(input: CreateWorkItemInput): Promise<void> 
     await linkCountdown(item.id as string, title, input.endDate, input.startDate);
   }
 
-  refresh();
+  refresh(input.addToVisualisation ? "all" : "tasks");
 }
 
 /**
@@ -348,14 +364,14 @@ export async function setWorkItemPriority(
     .eq("id", id);
   if (error) throw error;
 
-  refresh();
+  refresh("tasks");
 }
 
 export async function setWorkItemDone(id: string, done: boolean): Promise<void> {
   const { supabase } = await requireUser();
   const { error } = await supabase.from("work_items").update({ done }).eq("id", id);
   if (error) throw error;
-  refresh();
+  refresh("tasks");
 }
 
 export async function renameWorkItem(id: string, title: string): Promise<void> {
@@ -367,7 +383,7 @@ export async function renameWorkItem(id: string, title: string): Promise<void> {
     .update({ title: trimmed.slice(0, 500) })
     .eq("id", id);
   if (error) throw error;
-  refresh();
+  refresh("tasks");
 }
 
 export async function deleteWorkItem(id: string): Promise<void> {
@@ -375,7 +391,7 @@ export async function deleteWorkItem(id: string): Promise<void> {
   // The linked countdown, if any, goes with it via on delete cascade.
   const { error } = await supabase.from("work_items").delete().eq("id", id);
   if (error) throw error;
-  refresh();
+  refresh("all");
 }
 
 /**
@@ -395,7 +411,7 @@ export async function reorderWorkItems(
         .eq("id", id),
     ),
   );
-  refresh();
+  refresh("tasks");
 }
 
 // ---------------------------------------------------------------------------
@@ -446,7 +462,7 @@ export async function setWorkItemVisualised(
       .delete()
       .eq("work_item_id", workItemId);
     if (error) throw error;
-    refresh();
+    refresh("all");
     return;
   }
 
@@ -460,7 +476,7 @@ export async function setWorkItemVisualised(
   if (itemError) throw itemError;
 
   await linkCountdown(workItemId, item.title as string, endDate, startDate);
-  refresh();
+  refresh("all");
 }
 
 export type CreateCountdownInput = {
@@ -491,7 +507,7 @@ export async function createCountdown(
     position: nextPosition(siblings ?? []),
   });
   if (error) throw error;
-  refresh();
+  refresh("countdowns");
 }
 
 export async function updateCountdown(
@@ -507,7 +523,7 @@ export async function updateCountdown(
 
   const { error } = await supabase.from("countdowns").update(update).eq("id", id);
   if (error) throw error;
-  refresh();
+  refresh("countdowns");
 }
 
 /**
@@ -518,7 +534,7 @@ export async function deleteCountdown(id: string): Promise<void> {
   const { supabase } = await requireUser();
   const { error } = await supabase.from("countdowns").delete().eq("id", id);
   if (error) throw error;
-  refresh();
+  refresh("all");
 }
 
 export async function setCountdownCollapsed(
@@ -540,5 +556,5 @@ export async function reorderCountdowns(orderedIds: string[]): Promise<void> {
       supabase.from("countdowns").update({ position: index }).eq("id", id),
     ),
   );
-  refresh();
+  refresh("countdowns");
 }

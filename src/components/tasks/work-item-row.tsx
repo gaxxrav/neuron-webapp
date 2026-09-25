@@ -2,16 +2,10 @@
 
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { useState, useTransition } from "react";
+import { useState } from "react";
 
 import { ChartIcon, FlagIcon, GripIcon, TrashIcon } from "@/components/icons";
-import {
-  deleteWorkItem,
-  renameWorkItem,
-  setWorkItemDone,
-  setWorkItemPriority,
-  setWorkItemVisualised,
-} from "@/lib/actions";
+import { useBoardActions } from "@/components/tasks/board-context";
 import { todayKey } from "@/lib/dates";
 import type { WorkItem } from "@/lib/types";
 
@@ -26,11 +20,14 @@ export function WorkItemRow({ item, visualised, priority }: Props) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: item.id, data: { type: "item", sectionId: item.section_id } });
 
+  // Every mutation goes through the board, which applies it to local state
+  // first so the row reacts on the same frame as the click.
+  const board = useBoardActions();
+
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(item.title);
   const [dateOpen, setDateOpen] = useState(false);
   const [endDate, setEndDate] = useState("");
-  const [, startTransition] = useTransition();
 
   function commitRename() {
     setEditing(false);
@@ -39,12 +36,12 @@ export function WorkItemRow({ item, visualised, priority }: Props) {
       setDraft(item.title);
       return;
     }
-    startTransition(() => renameWorkItem(item.id, next));
+    board.rename(item.id, next);
   }
 
   function toggleVisualised() {
     if (visualised) {
-      startTransition(() => setWorkItemVisualised(item.id, false));
+      board.setVisualised(item.id, false);
     } else {
       setDateOpen((open) => !open);
     }
@@ -54,9 +51,7 @@ export function WorkItemRow({ item, visualised, priority }: Props) {
     event.preventDefault();
     if (!endDate) return;
     setDateOpen(false);
-    startTransition(() =>
-      setWorkItemVisualised(item.id, true, endDate, todayKey()),
-    );
+    board.setVisualised(item.id, true, endDate);
     setEndDate("");
   }
 
@@ -83,10 +78,7 @@ export function WorkItemRow({ item, visualised, priority }: Props) {
           type="checkbox"
           checked={item.done}
           aria-label={`Mark ${item.title} as done`}
-          onChange={(e) => {
-            const done = e.target.checked;
-            startTransition(() => setWorkItemDone(item.id, done));
-          }}
+          onChange={(e) => board.toggleDone(item.id, e.target.checked)}
           className={`size-4 shrink-0 ${
             priority ? "accent-[var(--priority)]" : "accent-[var(--accent)]"
           }`}
@@ -125,9 +117,7 @@ export function WorkItemRow({ item, visualised, priority }: Props) {
 
         <button
           type="button"
-          onClick={() =>
-            startTransition(() => setWorkItemPriority(item.id, !priority))
-          }
+          onClick={() => board.togglePriority(item.id)}
           aria-pressed={priority}
           title={priority ? "Remove from priority" : "Make priority"}
           className={`shrink-0 rounded p-1 transition ${
@@ -143,11 +133,7 @@ export function WorkItemRow({ item, visualised, priority }: Props) {
           type="button"
           onClick={toggleVisualised}
           aria-pressed={visualised}
-          title={
-            visualised
-              ? "Remove from visualisation"
-              : "Add to visualisation"
-          }
+          title={visualised ? "Remove from visualisation" : "Add to visualisation"}
           className={`shrink-0 rounded p-1 transition ${
             visualised
               ? "text-accent"
@@ -159,7 +145,7 @@ export function WorkItemRow({ item, visualised, priority }: Props) {
 
         <button
           type="button"
-          onClick={() => startTransition(() => deleteWorkItem(item.id))}
+          onClick={() => board.remove(item.id)}
           title="Delete item"
           aria-label={`Delete ${item.title}`}
           className="shrink-0 rounded p-1 text-muted/50 opacity-0 transition hover:text-priority group-hover:opacity-100 focus-visible:opacity-100"

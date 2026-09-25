@@ -23,8 +23,18 @@ import { useRef, useState, useTransition } from "react";
 
 import { AddItemForm } from "@/components/tasks/add-item-form";
 import { AddSectionForm } from "@/components/tasks/add-section-form";
+import { BoardProvider, type BoardActions } from "@/components/tasks/board-context";
 import { SectionCard } from "@/components/tasks/section-card";
-import { reorderSections, reorderWorkItems } from "@/lib/actions";
+import {
+  deleteWorkItem,
+  renameWorkItem,
+  reorderSections,
+  reorderWorkItems,
+  setWorkItemDone,
+  setWorkItemPriority,
+  setWorkItemVisualised,
+} from "@/lib/actions";
+import { todayKey } from "@/lib/dates";
 import type { Section, WorkItem } from "@/lib/types";
 import { useServerState } from "@/lib/use-server-state";
 
@@ -44,6 +54,7 @@ export function TasksBoard({ sections, items, visualisedItemIds }: Props) {
   // the server sends fresh rows after a revalidate.
   const [localSections, setLocalSections] = useServerState(sections);
   const [localItems, setLocalItems] = useServerState(items);
+  const [localVisualised, setLocalVisualised] = useServerState(visualisedItemIds);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [, startTransition] = useTransition();
 
@@ -64,7 +75,114 @@ export function TasksBoard({ sections, items, visualisedItemIds }: Props) {
   const itemsIn = (sectionId: string) =>
     localItems.filter((i) => i.section_id === sectionId).sort(byPosition);
 
-  const visualised = new Set(visualisedItemIds);
+  const visualised = new Set(localVisualised);
+
+  /**
+   * Applies a change locally, fires the server action, and restores the
+   * previous state if it fails. Without this the UI waits on a round trip
+   * that includes re-validating the session and refetching the whole board.
+   */
+  function optimistic(
+    apply: (current: WorkItem[]) => WorkItem[],
+    persist: () => Promise<void>,
+  ) {
+    // Captured from the current render, not inside the updater: the updater
+    // is not guaranteed to have run by the time the catch needs it.
+    const snapshot = localItems;
+    setLocalItems(apply);
+    startTransition(async () => {
+      try {
+        await persist();
+      } catch {
+        setLocalItems(snapshot);
+      }
+    });
+  }
+
+  const boardActions: BoardActions = {
+    toggleDone(id, done) {
+      optimistic(
+        (current) => current.map((i) => (i.id === id ? { ...i, done } : i)),
+        () => setWorkItemDone(id, done),
+      );
+    },
+
+    rename(id, title) {
+      optimistic(
+        (current) => current.map((i) => (i.id === id ? { ...i, title } : i)),
+        () => renameWorkItem(id, title),
+      );
+    },
+
+    remove(id) {
+      setLocalVisualised((current) => current.filter((v) => v !== id));
+      optimistic(
+        (current) => current.filter((i) => i.id !== id),
+        () => deleteWorkItem(id),
+      );
+    },
+
+    togglePriority(id) {
+      const item = localItems.find((i) => i.id === id);
+      if (!item || !prioritySection) return;
+
+      const isPriority = item.section_id === prioritySection.id;
+
+      // Mirrors the server: demoting returns the item to where it came from,
+      // falling back to the first ordinary section.
+      const remembered = item.previous_section_id;
+      const target = isPriority
+        ? remembered && remembered !== prioritySection.id
+          ? remembered
+          : normalSections[0]?.id
+        : prioritySection.id;
+
+      // Only the server can conjure a default section, so let it round trip.
+      if (!target) {
+        startTransition(() => setWorkItemPriority(id, !isPriority));
+        return;
+      }
+
+      const bottom =
+        localItems
+          .filter((i) => i.section_id === target)
+          .reduce((max, i) => Math.max(max, i.position), -1) + 1;
+
+      optimistic(
+        (current) =>
+          current.map((i) =>
+            i.id === id
+              ? {
+                  ...i,
+                  section_id: target,
+                  previous_section_id: isPriority ? null : i.section_id,
+                  position: bottom,
+                }
+              : i,
+          ),
+        () => setWorkItemPriority(id, !isPriority),
+      );
+    },
+
+    setVisualised(id, on, endDate) {
+      const snapshot = localVisualised;
+      setLocalVisualised((current) =>
+        on ? [...current, id] : current.filter((v) => v !== id),
+      );
+      startTransition(async () => {
+        try {
+          await setWorkItemVisualised(
+            id,
+            on,
+            endDate,
+            on ? todayKey() : undefined,
+          );
+        } catch {
+          setLocalVisualised(snapshot);
+        }
+      });
+    },
+  };
 
   function sectionOfItem(itemId: string): string | null {
     return localItems.find((i) => i.id === itemId)?.section_id ?? null;
@@ -195,72 +313,74 @@ export function TasksBoard({ sections, items, visualisedItemIds }: Props) {
   const activeSection = localSections.find((s) => s.id === activeId) ?? null;
 
   return (
-    <div className="flex flex-col gap-4">
-      <AddItemForm sections={normalSections} />
+    <BoardProvider value={boardActions}>
+      <div className="flex flex-col gap-4">
+        <AddItemForm sections={normalSections} />
 
-      <DndContext
-        // Explicit id: without it dnd-kit derives its aria-describedby id from
-        // an internal counter that starts at a different value on the server
-        // than in the browser, which trips a hydration mismatch.
-        id="tasks-board"
-        sensors={sensors}
-        collisionDetection={closestCorners}
-        modifiers={[restrictToVerticalAxis]}
-        onDragStart={handleDragStart}
-        onDragOver={handleDragOver}
-        onDragEnd={handleDragEnd}
-        onDragCancel={() => {
-          setActiveId(null);
-          dragOrigin.current = null;
-          document.body.classList.remove("dragging");
-        }}
-      >
-        <div className="flex flex-col gap-3">
-          {/* Pinned above everything and never part of the sortable list. */}
-          {prioritySection ? (
-            <SectionCard
-              section={prioritySection}
-              items={itemsIn(prioritySection.id)}
-              visualisedItemIds={visualised}
-            />
-          ) : null}
-
-          <SortableContext
-            items={normalSections.map((s) => s.id)}
-            strategy={verticalListSortingStrategy}
-          >
-            {normalSections.map((section) => (
+        <DndContext
+          // Explicit id: without it dnd-kit derives its aria-describedby id from
+          // an internal counter that starts at a different value on the server
+          // than in the browser, which trips a hydration mismatch.
+          id="tasks-board"
+          sensors={sensors}
+          collisionDetection={closestCorners}
+          modifiers={[restrictToVerticalAxis]}
+          onDragStart={handleDragStart}
+          onDragOver={handleDragOver}
+          onDragEnd={handleDragEnd}
+          onDragCancel={() => {
+            setActiveId(null);
+            dragOrigin.current = null;
+            document.body.classList.remove("dragging");
+          }}
+        >
+          <div className="flex flex-col gap-3">
+            {/* Pinned above everything and never part of the sortable list. */}
+            {prioritySection ? (
               <SectionCard
-                key={section.id}
-                section={section}
-                items={itemsIn(section.id)}
+                section={prioritySection}
+                items={itemsIn(prioritySection.id)}
                 visualisedItemIds={visualised}
               />
-            ))}
-          </SortableContext>
-        </div>
+            ) : null}
 
-        <DragOverlay dropAnimation={null}>
-          {activeItem ? (
-            <div className="rounded-lg border border-border bg-surface px-3 py-1.5 text-sm shadow-lg">
-              {activeItem.title}
-            </div>
-          ) : activeSection ? (
-            <div className="rounded-xl border border-border bg-surface px-3 py-2 text-sm font-semibold shadow-lg">
-              {activeSection.name}
-            </div>
-          ) : null}
-        </DragOverlay>
-      </DndContext>
+            <SortableContext
+              items={normalSections.map((s) => s.id)}
+              strategy={verticalListSortingStrategy}
+            >
+              {normalSections.map((section) => (
+                <SectionCard
+                  key={section.id}
+                  section={section}
+                  items={itemsIn(section.id)}
+                  visualisedItemIds={visualised}
+                />
+              ))}
+            </SortableContext>
+          </div>
 
-      <AddSectionForm />
+          <DragOverlay dropAnimation={null}>
+            {activeItem ? (
+              <div className="rounded-lg border border-border bg-surface px-3 py-1.5 text-sm shadow-lg">
+                {activeItem.title}
+              </div>
+            ) : activeSection ? (
+              <div className="rounded-xl border border-border bg-surface px-3 py-2 text-sm font-semibold shadow-lg">
+                {activeSection.name}
+              </div>
+            ) : null}
+          </DragOverlay>
+        </DndContext>
 
-      {normalSections.length === 0 && itemsIn(prioritySection?.id ?? "").length === 0 ? (
-        <p className="px-1 text-xs text-muted">
-          Tip: add a section to group your work items, then drag sections to
-          reorder them. The priority section always stays on top.
-        </p>
-      ) : null}
-    </div>
+        <AddSectionForm />
+
+        {normalSections.length === 0 && itemsIn(prioritySection?.id ?? "").length === 0 ? (
+          <p className="px-1 text-xs text-muted">
+            Tip: add a section to group your work items, then drag sections to
+            reorder them. The priority section always stays on top.
+          </p>
+        ) : null}
+      </div>
+    </BoardProvider>
   );
 }
